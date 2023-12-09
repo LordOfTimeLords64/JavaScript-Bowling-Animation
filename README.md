@@ -1,2 +1,2 @@
 # cs360-graphics-project-final
- 
+This is the final project for my CSCI 360 course, *Principles of Interactive Computer Graphics*. I decided to make a bowling animation that shows off some of the computer graphics techniques we learned in class. It primarily uses the *THREE.js* graphics library and the *Ammo.js* physics engine library.
