@@ -1,13 +1,14 @@
 /*
     Principles of Interactive Computer Graphics
-    Final Project (version 1)
+    Final Project
     Michael Komnick
-    11/30/2023
+    12/11/2023
 */
 
 // Declaring global variables for later use with physics engine
 var physicsUniverse = undefined;
 var rigidBody_List = new Array();
+var allTenPins = new Array();
 var tmpTransformation = undefined;
 var clock = undefined;
 
@@ -17,7 +18,6 @@ var camera = undefined;
 var renderer = undefined;
 
 // Accurate bowling equipment dimensions
-var bowlingBallRadius = ((8.595 + 8.500)/2)/2;
 var laneParams = {
     surfaceWidth: 41.5,
     surfaceLength: 754 + 3/16,
@@ -47,8 +47,12 @@ var laneParams = {
         -3 * Math.sqrt(108)
     ],
     pinDotDiameter: 2 + 1/4,
+
+    initX: 0,
+    initY: 0,
+    initZ:0,
 };
-pinParameters = {
+var pinParameters = {
     splinePoints: [
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(2.031/2, 0, 0),
@@ -77,9 +81,42 @@ pinParameters = {
         new THREE.Vector3(0, 15.000, 0)
     ]
 };
+var ballParams = {
+    radius: ((8.595 + 8.500)/2)/2,
+
+    initX: 12,
+    initY: ((8.595 + 8.500)/2)/2 + 1,
+    initZ: laneParams.initZ + laneParams.surfaceLength/2 - ((8.595 + 8.500)/2)/2,
+
+    velX: -2,
+    velZ: -20 * 12,
+}
 
 // Starting the physics engine and calling the start function
-Ammo().then(AmmoStart);
+// if all textures are loaded
+var started = false;
+var texturesLoaded = [];
+texturesLoaded['ball'] = false;
+texturesLoaded['lane'] = false;
+var ballTexture = new THREE.TextureLoader().load(
+    'red-marble.jpg',
+    function() {
+        startAfterTextures();
+    }
+);
+var laneTexture = new THREE.TextureLoader().load(
+    'laneWood.png',
+    function() {
+        startAfterTextures();
+    }
+);
+
+function startAfterTextures() {
+    if(!texturesLoaded.includes(false) && !started) {
+        Ammo().then(AmmoStart);
+        started = true;
+    }
+}
 
 function AmmoStart() {
 
@@ -88,23 +125,30 @@ function AmmoStart() {
     initGraphicsUniverse();
     initPhysiscsUniverse();
 
-    var initialLanePos = new THREE.Vector3(0, 0, 300);
+    var initialLanePos = new THREE.Vector3(
+        laneParams.initX,
+        laneParams.initY,
+        laneParams.initZ
+    );
 
     createLane(initialLanePos, 0, null);
 
     createTenPins(initialLanePos.x, initialLanePos.y, initialLanePos.z);
 
-    createBall(bowlingBallRadius, new THREE.Vector3(7, 36, initialLanePos.z), 15, null);
+    createBall(ballParams.radius, new THREE.Vector3(ballParams.initX, ballParams.initY, ballParams.initZ), 15, null);
 
     var spotlight = new THREE.SpotLight(0xFFFFFF);
-    spotlight.position.set(0, 50, 0);
+    spotlight.position.set(0, 100, 0);
     spotlight.target = scene.getObjectByName('theBall');
     spotlight.intensity = 0.5;
     spotlight.castShadow = true;
     scene.add(spotlight);
 
-    render();
+    TW.setKeyboardCallback(" ", rollBall, "Roll the ball!");
+    TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
 
+    render();
+    
 }
 
 function initPhysiscsUniverse() {
@@ -142,12 +186,12 @@ function initGraphicsUniverse() {
         renderer,
         scene,
         {
-            minx: -50,
-            maxx: 50,
+            minx: -laneParams.surfaceWidth/2,
+            maxx: laneParams.surfaceWidth/2,
             miny: -10,
             maxy: 50,
-            minz: -50,
-            maxz: 50
+            minz: -laneParams.surfaceLength/2,
+            maxz: laneParams.surfaceLength/2
         }
     );
 
@@ -165,6 +209,7 @@ function createLane(position, mass, rot_quaternion) {
 
     // Making the parent lane object
     let lane = new THREE.Object3D();
+    lane.name = 'lane';
 
     let laneSurface = makeLaneSurface();
 
@@ -229,6 +274,7 @@ function createLane(position, mass, rot_quaternion) {
 function makeLaneSurface() {
     // Making the parent lane surface object
     var laneSurface = new THREE.Object3D();
+    laneSurface.name = 'nameSurface';
 
     ////////////////
     // LANE PLANE //
@@ -240,17 +286,6 @@ function makeLaneSurface() {
     var laneGeom = new THREE.PlaneGeometry(width, length, 100, 100);
 
     // Lane texture
-    var laneTexture = new THREE.TextureLoader().load(
-        'laneWood.png',
-        function() {
-            // This is a temporary function to get it to render again as soon as the
-            // texture finishes loading. I'd prefer for the code to wait for the texture
-            // to load and then continue the makeLaneSurface function but that's not
-            // how the TextureLoader works. I don't want to make global variables for
-            // each laneSurface object either.
-            TW.render();
-        }
-    );
     laneTexture.wrapS = THREE.RepeatWrapping;
     laneTexture.repeat.set(2, 0);
 
@@ -303,13 +338,14 @@ function makeLaneSurface() {
     return laneSurface;
 }
 
-function makePin(position, mass, rot_quaternion) {
+function makePin(position, mass, rot_quaternion, objectName) {
 
     ///////////////////////////////
     // REGULAR THREE.js GRAPHICS //
     ///////////////////////////////
 
     var pin = new THREE.Object3D();
+    pin.name = objectName;
     var pinHeight = 15;
     var pinMaxRadius = 4.766/2;
 
@@ -376,6 +412,7 @@ function makePin(position, mass, rot_quaternion) {
     pin.userData.physicsBody = RBody;
 
     rigidBody_List.push(pin);
+    allTenPins.push(pin);
 
 }
 
@@ -387,7 +424,8 @@ function createTenPins(laneX, laneY, laneZ) {
             laneY + 0.3,
             laneZ + laneParams.pinsZOffsets[i] - laneParams.firstPinZOffset + laneParams.surfaceLength/2
         );
-        makePin(pos, 3.5, null);
+        pinName = 'pin' + i;
+        makePin(pos, 3.5, null, pinName);
     }
 }
 
@@ -402,17 +440,6 @@ function createBall(radius, position, mass, rot_quaternion) {
     }
 
     var ballGeom = new THREE.SphereGeometry(radius, 30, 30);
-    var ballTexture = new THREE.TextureLoader().load(
-        'red-marble.jpg',
-        function() {
-            // This is a temporary function to get it to render again as soon as the
-            // texture finishes loading. I'd prefer for the code to wait for the texture
-            // to load and then continue the makeLaneSurface function but that's not
-            // how the TextureLoader works. I don't want to make global variables for
-            // each laneSurface object either.
-            TW.render();
-        }
-    );
     var ballMat = new THREE.MeshPhongMaterial({
         color: new THREE.Color(1, 1, 1),
         specular: new THREE.Color( 1, 1, 1),
@@ -452,7 +479,7 @@ function createBall(radius, position, mass, rot_quaternion) {
     );
     let RBody = new Ammo.btRigidBody(RBody_Info);
 
-    RBody.setLinearVelocity(new Ammo.btVector3(-3, 0, -20 * 12));
+    // RBody.setLinearVelocity(new Ammo.btVector3(-3, 0, -20 * 12));
 
     physicsUniverse.addRigidBody(RBody);
 
@@ -496,4 +523,15 @@ function render() {
     TW.render();
     requestAnimationFrame(render);
 
+}
+
+function rollBall() {
+    var ball = scene.getObjectByName('theBall');
+    ball.userData.physicsBody.setLinearVelocity(
+        new Ammo.btVector3(ballParams.velX, 0, ballParams.velZ)
+    );
+}
+
+function resetLane() {
+    location.reload();
 }
