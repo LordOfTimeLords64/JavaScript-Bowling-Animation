@@ -170,6 +170,8 @@ function AmmoStart() {
 
     TW.setKeyboardCallback("f", rollBall, "Roll the ball!");
     TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
+    TW.setKeyboardCallback("j", moveBallLeft, "Move the ball to the left!");
+    TW.setKeyboardCallback("k", moveBallRight, "Move the ball to the right!");
 
     render();
 
@@ -225,10 +227,10 @@ function initGraphicsUniverse() {
 
 }
 
-function setupEventHandlers() {
-    window.addEventListener('keydown', handleKeyDown, false);
-    window.addEventListener('keyup', handleKeyUp, false);
-}
+// function setupEventHandlers() {
+//     window.addEventListener('keydown', handleKeyDown, false);
+//     window.addEventListener('keyup', handleKeyUp, false);
+// }
 
 function createLane(position, mass, rot_quaternion) {
 
@@ -566,44 +568,63 @@ function rollBall() {
     );
 }
 
+function moveBallLeft() {
+    var ball = scene.getObjectByName('theBall');
+    ball.userData.physicsBody.setLinearVelocity(
+        new Ammo.btVector3(-5, 0, 0)
+    );
+    console.log(ball.userData.physicsBody.getLinearVelocity().x);
+}
+
+function moveBallRight() {
+    var ball = scene.getObjectByName('theBall');
+    ball.userData.physicsBody.setLinearVelocity(
+        new Ammo.btVector3(5, 0, 0)
+    );
+}
+
 function resetLane() {
     location.reload();
 }
 
-function handleKeyDown(event) {
-    var keyCode = event.keyCode;
+// function handleKeyDown(event) {
+//     var keyCode = event.keyCode;
 
-    switch(keyCode) {
-        case 37: // left arrow
-            moveDirection.left = 1;
-            break;
+//     switch(keyCode) {
+//         case 67: // c
+//             moveDirection.left = 1;
+//             break;
 
-        case 39: // right arrow
-            moveDirection.right = 1;
-            break;
-    }
-}
+//         case 86: // v
+//             moveDirection.right = 1;
+//             break;
+//     }
+//     // moveBall();
+// }
 
-function handleKeyUp(event) {
-    var keyCode = event.keyCode;
+// function handleKeyUp(event) {
+//     var keyCode = event.keyCode;
 
-    switch(keyCode) {
-        case 37: // left arrow
-            moveDirection.left = 0;
-            break;
+//     switch(keyCode) {
+//         case 67: // c
+//             moveDirection.left = 0;
+//             break;
 
-        case 39: // right arrow
-            moveDirection.right = 0;
-            break;
-    }
-}
+//         case 86: // v
+//             moveDirection.right = 0;
+//             break;
+//     }
+//     // moveBall();
+// }
 
-function moveBall() {
-    var moveX = moveDirection.right - moveDirection.left;
+// function moveBall() {
+//     var moveX = moveDirection.right - moveDirection.left;
+//     moveX = moveX * 20;
 
-    var oldVel = ballObject.userData.physicsBody.getLinearVelocity();
-    
-    var resultantImpulse = new Ammo.btVector3(moveX, oldVel.y, oldVel.z);
+//     // var oldVel = ballObject.userData.physicsBody.getLinearVelocity();
+//     // var resultantImpulse = new Ammo.btVector3(moveX, oldVel.y, oldVel.z);
 
-    ballObject.userData.physicsBody.setLinearVelocity(resultantImpulse);
-}
+//     var resultantImpulse = new Ammo.btVector3(moveX, 0, 0);
+
+//     ballObject.userData.physicsBody.setLinearVelocity(resultantImpulse);
+// }
