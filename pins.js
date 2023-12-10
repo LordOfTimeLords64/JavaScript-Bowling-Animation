@@ -1,3 +1,10 @@
+/*
+    Principles of Interactive Computer Graphics
+    Final Project
+    Michael Komnick
+    12/11/2023
+*/
+
 var pinParameters = {
     splinePoints: [
         new THREE.Vector3(0, 0, 0),
@@ -30,10 +37,7 @@ var pinParameters = {
 };
 
 function makePin(position, mass, rot_quaternion, objectName) {
-    ///////////////////////////////
-    // REGULAR THREE.js GRAPHICS //
-    ///////////////////////////////
-
+    // THREE.js graphics portion of the pin
     var pin = new THREE.Object3D();
     pin.name = objectName;
     var pinHeight = 15;
@@ -56,12 +60,8 @@ function makePin(position, mass, rot_quaternion, objectName) {
     pin.position.set(position.x, position.y + pinHeight/2, position.z)
     scene.add(pin);
 
-    /////////////////////////////
-    // Ammo.js RIGID BODY CODE //
-    /////////////////////////////
-
+    // Ammo.js physics portion of the pin
     let quaternion = undefined;
-
     if (rot_quaternion == null) {
         quaternion = {x: 0, y: 0, z:0, w: 1};
     } else {
@@ -98,11 +98,8 @@ function makePin(position, mass, rot_quaternion, objectName) {
     let RBody = new Ammo.btRigidBody(RBody_Info);
 
     physicsUniverse.addRigidBody(RBody);
-
     pin.userData.physicsBody = RBody;
-
     rigidBody_List.push(pin);
-    allTenPins.push(pin);
 }
 
 function createTenPins(laneX, laneY, laneZ) {

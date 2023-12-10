@@ -1,3 +1,10 @@
+/*
+    Principles of Interactive Computer Graphics
+    Final Project
+    Michael Komnick
+    12/11/2023
+*/
+
 var laneParams = {
     surfaceWidth: 41.5,
     surfaceLength: 754 + 3/16,
@@ -34,10 +41,7 @@ var laneParams = {
 };
 
 function createLane(position, mass, rot_quaternion) {
-    ///////////////////////////////
-    // REGULAR THREE.js GRAPHICS //
-    ///////////////////////////////
-
+    // THREE.js graphics portion of the lane
     // Making the parent lane object
     let lane = new THREE.Object3D();
     lane.name = 'lane';
@@ -50,14 +54,10 @@ function createLane(position, mass, rot_quaternion) {
     lane.position.set(position.x, position.y, position.z);
     scene.add(lane);
 
-    /////////////////////////////
-    // Ammo.js RIGID BODY CODE //
-    /////////////////////////////
-
+    // Ammo.js physics portion of the lane
     let collisionBoxHeight = 0.1;
 
     let quaternion = undefined;
-
     if (rot_quaternion == null) {
         quaternion = {x: 0, y: 0, z:0, w: 1};
     } else {
@@ -97,9 +97,7 @@ function createLane(position, mass, rot_quaternion) {
     RBody.setRollingFriction(laneParams.friciton);
 
     physicsUniverse.addRigidBody(RBody);
-
     lane.userData.physicsBody = RBody;
-
     rigidBody_List.push(lane);
 }
 
@@ -109,9 +107,7 @@ function makeLaneSurface() {
     var laneSurface = new THREE.Object3D();
     laneSurface.name = 'nameSurface';
 
-    ////////////////
-    // LANE PLANE //
-    ////////////////
+    // LANE PLANE
     var width = laneParams.surfaceWidth;
     var length = laneParams.surfaceLength;
 
@@ -138,10 +134,7 @@ function makeLaneSurface() {
 
     laneSurface.add(laneMesh);
 
-    //////////////
-    // PIN DOTS //
-    //////////////
-
+    // PIN DOTS
     var radius = laneParams.pinDotDiameter/2;
     
     var pinDotMat = new THREE.MeshPhongMaterial({

@@ -1,3 +1,10 @@
+/*
+    Principles of Interactive Computer Graphics
+    Final Project
+    Michael Komnick
+    12/11/2023
+*/
+
 var ballParams = {
     radius: ((8.595 + 8.500)/2)/2,
     initX: 0,
@@ -14,14 +21,7 @@ var ballParams = {
 };
 
 function createBall(radius, position, mass, rot_quaternion) {
-    let quaternion = undefined;
-
-    if (rot_quaternion == null) {
-        quaternion = {x: 0, y: 0, z:0, w: 1};
-    } else {
-        quaternion = rot_quaternion;
-    }
-
+    // THREE.js graphics portion of the ball
     var ballGeom = new THREE.SphereGeometry(radius, 30, 30);
     var ballMat = new THREE.MeshPhongMaterial({
         color: new THREE.Color(1, 1, 1),
@@ -34,6 +34,14 @@ function createBall(radius, position, mass, rot_quaternion) {
     ball.position.set(position.x, position.y, position.x);
     ball.name = 'theBall';
     scene.add(ball);
+
+    // Ammo.js physics portion of the ball
+    let quaternion = undefined;
+    if (rot_quaternion == null) {
+        quaternion = {x: 0, y: 0, z:0, w: 1};
+    } else {
+        quaternion = rot_quaternion;
+    }
 
     let transform = new Ammo.btTransform();
     transform.setIdentity();
@@ -63,18 +71,17 @@ function createBall(radius, position, mass, rot_quaternion) {
     let RBody = new Ammo.btRigidBody(RBody_Info);
 
     RBody.setActivationState(STATE.DISABLE_DEACTIVATION);
-    
     RBody.setFriction(ballParams.friction);
     RBody.setRollingFriction(ballParams.friction);
 
     physicsUniverse.addRigidBody(RBody);
-
     ball.userData.physicsBody = RBody;
-
     rigidBody_List.push(ball);
 }
 
+// Moves the ball left or right based on user input (a and d)
 function moveBall() {
+    // If the ball has been rolled, don't do anything, just let the ball roll as is
     if (ballWasRolled) {
         return;
     }
@@ -93,7 +100,9 @@ function moveBall() {
     ball.userData.physicsBody.setLinearVelocity(resultantImpulse);
 }
 
+// Rolls the ball given user input (space bar, linear velocity, and angular velocity)
 function rollBall() {
+    // If the ball has been rolled, don't do anything, just let the ball roll as is
     if (ballWasRolled) {
         return;
     }

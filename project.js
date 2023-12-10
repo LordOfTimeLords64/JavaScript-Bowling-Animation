@@ -8,15 +8,16 @@
 // Declaring global variables for later use with physics engine
 var physicsUniverse = undefined;
 var rigidBody_List = new Array();
-var allTenPins = new Array();
 var tmpTransformation = undefined;
 var clock = undefined;
+const STATE = {DISABLE_DEACTIVATION: 4};
 
 // Declaring regular THREE.js variables for later
 var scene = undefined;
 var camera = undefined;
 var renderer = undefined;
 
+// Lighting parameters
 var pinSpotlightParams = {
     x: 0,
     y: 75,
@@ -34,15 +35,11 @@ var ballSpotlightParams = {
     angle: Math.PI/16,
 };
 
-// Preparing for input to move the ball from its starting position before
-// rolling it
+// Preparing for input to move the ball left and right before rolling it
 var moveDirection = {left: 0, right: 0};
-const STATE = {DISABLE_DEACTIVATION: 4};
 var ballWasRolled = false;
 
-
-// Starting the physics engine and calling the start function
-// if all textures are loaded
+// Loading textures and calling the start function after all textures are loaded
 var started = false;
 var texturesLoaded = [];
 texturesLoaded['ball'] = false;
@@ -60,6 +57,7 @@ var laneTexture = new THREE.TextureLoader().load(
     }
 );
 function startAfterTextures() {
+    // If all textures are loaded and the start function hasn't already been called
     if(!texturesLoaded.includes(false) && !started) {
         Ammo().then(AmmoStart);
         started = true;
@@ -69,29 +67,35 @@ function startAfterTextures() {
 function AmmoStart() {
     tmpTransformation = new Ammo.btTransform();
 
+    // Setup functions
     initGraphicsUniverse();
     initPhysiscsUniverse();
     setupEventHandlers();
 
+    // Creating the scene
     var lanePos = new THREE.Vector3(
         laneParams.initX,
         laneParams.initY,
         laneParams.initZ
     );
-
     createLane(lanePos, 0, null);
-
     createTenPins(lanePos.x, lanePos.y, lanePos.z);
+    createBall(
+        ballParams.radius,
+        new THREE.Vector3(ballParams.initX, ballParams.initY, ballParams.initZ),
+        ballParams.mass,
+        null
+    );
 
-    createBall(ballParams.radius, new THREE.Vector3(ballParams.initX, ballParams.initY, ballParams.initZ), 15, null);
-
+    // Lighting
+    var ambLight = new THREE.AmbientLight(0x333333, 3);
+    scene.add(ambLight);
     createPinsSpotlight();
-
     createBallSpotlight();
 
+    // Setting up user input
     TW.setKeyboardCallback(" ", rollBall, "Roll the ball!");
     TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
-    
     var gui = new dat.GUI();
     gui.add(ballParams, "x_velocity", -12, 12).step(0.25);
     gui.add(ballParams, "z_velocity", 0, 50 * 12).step(0.25);
@@ -103,7 +107,7 @@ function AmmoStart() {
 }
 
 function initPhysiscsUniverse() {
-    // Configure the detection of collisions
+    // Configuring collision detection
     var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
     var dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
     var overlappingPairCache = new Ammo.btDbvtBroadphase();
@@ -122,16 +126,14 @@ function initPhysiscsUniverse() {
 }
 
 function initGraphicsUniverse() {
+    // Standard THREE.js setup
     clock = new THREE.Clock();
-
     scene = new THREE.Scene();
-
     scene.background = new THREE.Color(0x000000);
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     TW.mainInit(renderer, scene);
-
     TW.cameraSetup(
         renderer,
         scene,
@@ -144,10 +146,6 @@ function initGraphicsUniverse() {
             maxz: laneParams.surfaceLength/2 + 5
         }
     );
-
-    // Adding ambient light
-    var ambLight = new THREE.AmbientLight(0x333333, 3);
-    scene.add(ambLight);
 }
 
 function setupEventHandlers() {
@@ -155,6 +153,7 @@ function setupEventHandlers() {
     window.addEventListener('keyup', handleKeyUp, false);
 }
 
+// Creates a spotlight above the 5th pin setting dot on the lane
 function createPinsSpotlight() {
     var targetPinDot = scene.getObjectByName('pinDot4');
     var spotlight = new THREE.SpotLight(pinSpotlightParams.color);
@@ -171,6 +170,7 @@ function createPinsSpotlight() {
     scene.add(spotlight);
 }
 
+// Creates a spotlight to follow the bowling ball
 function createBallSpotlight() {
     var ball = scene.getObjectByName('theBall');
     var spotlight = new THREE.SpotLight(ballSpotlightParams.color);
@@ -190,11 +190,10 @@ function createBallSpotlight() {
 function updatePhysicsUniverse(deltaTime) {
     physicsUniverse.stepSimulation(deltaTime, 10);
 
+    // Updating the position and state of all of the physics objects in the scene
     for(i = 0; i < rigidBody_List.length; i++) {
-
         let Graphics_Obj = rigidBody_List[i];
         let Physics_Obj = Graphics_Obj.userData.physicsBody;
-
         let motionState = Physics_Obj.getMotionState();
         if(motionState) {
             motionState.getWorldTransform(tmpTransformation);
@@ -211,6 +210,7 @@ function updatePhysicsUniverse(deltaTime) {
     }
 }
 
+// Makes the ball spotlight follow the bowling ball
 function updateBallSpotlightPos() {
     var ballSpotlight = scene.getObjectByName('ballSpotlight');
     var ball = scene.getObjectByName('theBall');
@@ -226,11 +226,14 @@ function render() {
     moveBall();
     updatePhysicsUniverse(deltaTime);
     updateBallSpotlightPos();
-    // renderer.render(scene, camera);
     TW.render();
     requestAnimationFrame(render);
 }
 
+// You cannot set the position of physics objects directly, so I've opted to just force
+// reload the page. One alternative could be to delete the physics object, then set the
+// position of the mesh, and then recreate the physics object and attach it to the mesh.
+// The only way to move a physics object is to set a velocity or apply a force.
 function resetLane() {
     location.reload();
 }
