@@ -47,7 +47,6 @@ var laneParams = {
         -3 * Math.sqrt(108)
     ],
     pinDotDiameter: 2 + 1/4,
-
     initX: 0,
     initY: 0,
     initZ:0,
@@ -79,32 +78,40 @@ var pinParameters = {
         new THREE.Vector3(1.2735 * Math.cos(6 * Math.PI/16), 15 - 1.2735 + 1.2735 * Math.sin(6 * Math.PI/16), 0),
         new THREE.Vector3(1.2735 * Math.cos(7 * Math.PI/16), 15 - 1.2735 + 1.2735 * Math.sin(7 * Math.PI/16), 0),
         new THREE.Vector3(0, 15.000, 0)
-    ]
+    ],
+    mass: 3.5,
 };
 var ballParams = {
     radius: ((8.595 + 8.500)/2)/2,
-
     initX: 0,
     initY: ((8.595 + 8.500)/2)/2 + 1,
     initZ: laneParams.initZ + laneParams.surfaceLength/2 - ((8.595 + 8.500)/2)/2,
-
     x_velocity: 0,
-    z_velocity: -20 * 12,
-
+    y_velocity: 0,
+    z_velocity: 20 * 12,
+    x_angular_velocity: 0,
+    y_angular_velocity: 0,
+    z_angular_velocity:0,
     friction: 4,
     rollingFriciton: 10,
-}
-var spotlightParams = {
-    initX: 0,
-    initY: 100,
-    initZ: 0,
-
+    mass: 15,
+};
+var pinSpotlightParams = {
+    x: 0,
+    y: 75,
+    z:0,
     color: 0xFFFFFF,
-
     intensity: 0.5,
-
     angle: Math.PI/8,
-}
+};
+var ballSpotlightParams = {
+    x: -50,
+    y: 50,
+    z: 50,
+    color: 0xFFFFFF,
+    intensity: 0.5,
+    angle: Math.PI/16,
+};
 
 // Preparing for input to move the ball from its starting position before
 // rolling it
@@ -145,35 +152,28 @@ function AmmoStart() {
     initPhysiscsUniverse();
     setupEventHandlers();
 
-    var initialLanePos = new THREE.Vector3(
+    var lanePos = new THREE.Vector3(
         laneParams.initX,
         laneParams.initY,
         laneParams.initZ
     );
 
-    createLane(initialLanePos, 0, null);
+    createLane(lanePos, 0, null);
 
-    createTenPins(initialLanePos.x, initialLanePos.y, initialLanePos.z);
+    createTenPins(lanePos.x, lanePos.y, lanePos.z);
 
     createBall(ballParams.radius, new THREE.Vector3(ballParams.initX, ballParams.initY, ballParams.initZ), 15, null);
 
-    var spotlight = new THREE.SpotLight(spotlightParams.color);
-    spotlight.position.set(
-        spotlightParams.initX,
-        spotlightParams.initY,
-        spotlightParams.initZ
-    );
-    spotlight.target = scene.getObjectByName('theBall');
-    spotlight.intensity = spotlightParams.intensity;
-    spotlight.angle = spotlightParams.angle;
-    spotlight.castShadow = true;
-    scene.add(spotlight);
+    createPinsSpotlight();
+
+    createBallSpotlight();
 
     TW.setKeyboardCallback(" ", rollBall, "Roll the ball!");
     TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
     
     var gui = new dat.GUI();
     gui.add(ballParams, "x_velocity", -12, 12).step(0.25);
+    gui.add(ballParams, "z_velocity", 10 * 12, 30 * 12).step(0.25);
 
     render();
 }
@@ -205,6 +205,7 @@ function initGraphicsUniverse() {
     scene.background = new THREE.Color(0x000000);
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     TW.mainInit(renderer, scene);
 
     TW.cameraSetup(
@@ -221,13 +222,45 @@ function initGraphicsUniverse() {
     );
 
     // Adding ambient light
-    var ambLight = new THREE.AmbientLight(0x333333, 2);
+    var ambLight = new THREE.AmbientLight(0x333333, 3);
     scene.add(ambLight);
 }
 
 function setupEventHandlers() {
     window.addEventListener('keydown', handleKeyDown, false);
     window.addEventListener('keyup', handleKeyUp, false);
+}
+
+function createPinsSpotlight() {
+    var targetPinDot = scene.getObjectByName('pinDot4');
+    var spotlight = new THREE.SpotLight(pinSpotlightParams.color);
+    spotlight.position.set(
+        targetPinDot.position.x + pinSpotlightParams.x,
+        targetPinDot.position.y + pinSpotlightParams.y,
+        targetPinDot.position.z + pinSpotlightParams.z
+    );
+    spotlight.target = targetPinDot;
+    spotlight.intensity = pinSpotlightParams.intensity;
+    spotlight.angle = pinSpotlightParams.angle;
+    spotlight.castShadow = true;
+    spotlight.name = "pinsSpotlight";
+    scene.add(spotlight);
+}
+
+function createBallSpotlight() {
+    var ball = scene.getObjectByName('theBall');
+    var spotlight = new THREE.SpotLight(ballSpotlightParams.color);
+    spotlight.position.set(
+        ball.position.x + ballSpotlightParams.x,
+        ball.position.y + ballSpotlightParams.y,
+        ball.position.z + ballSpotlightParams.z
+    );
+    spotlight.target = ball;
+    spotlight.intensity = ballSpotlightParams.intensity;
+    spotlight.angle = ballSpotlightParams.angle;
+    spotlight.castShadow = true;
+    spotlight.name = "ballSpotlight";
+    scene.add(spotlight);
 }
 
 function createLane(position, mass, rot_quaternion) {
@@ -359,6 +392,8 @@ function makeLaneSurface() {
         pinDots[i].rotation.x = -Math.PI/2;
         pinDots.receiveShadow = true;
 
+        pinDots[i].name = 'pinDot' + i;
+
         laneSurface.add(pinDots[i]);
     }
 
@@ -450,7 +485,7 @@ function createTenPins(laneX, laneY, laneZ) {
             laneZ + laneParams.pinsZOffsets[i] - laneParams.firstPinZOffset + laneParams.surfaceLength/2
         );
         pinName = 'pin' + i;
-        makePin(pos, 3.5, null, pinName);
+        makePin(pos, pinParameters.mass, null, pinName);
     }
 }
 
@@ -539,11 +574,21 @@ function updatePhysicsUniverse(deltaTime) {
     }
 }
 
+function updateBallSpotlightPos() {
+    var ballSpotlight = scene.getObjectByName('ballSpotlight');
+    var ball = scene.getObjectByName('theBall');
+    ballSpotlight.position.set(
+        ball.position.x + ballSpotlightParams.x,
+        ball.position.y + ballSpotlightParams.y,
+        ball.position.z + ballSpotlightParams.z
+    );
+}
+
 function render() {
     let deltaTime = clock.getDelta();
     moveBall();
     updatePhysicsUniverse(deltaTime);
-
+    updateBallSpotlightPos();
     // renderer.render(scene, camera);
     TW.render();
     requestAnimationFrame(render);
@@ -557,7 +602,18 @@ function rollBall() {
     ballWasRolled = true;
     var ball = scene.getObjectByName('theBall');
     ball.userData.physicsBody.setLinearVelocity(
-        new Ammo.btVector3(ballParams.x_velocity, 0, ballParams.z_velocity)
+        new Ammo.btVector3(
+            ballParams.x_velocity,
+            ballParams.y_velocity,
+            (-1) * Math.abs(ballParams.z_velocity)
+        )
+    );
+    ball.userData.physicsBody.setAngularVelocity(
+        new Ammo.btVector3(
+            ballParams.x_angular_velocity,
+            ballParams.y_angular_velocity,
+            ballParams.z_angular_velocity
+        )
     );
 }
 
@@ -608,8 +664,10 @@ function moveBall() {
 
     var ball = scene.getObjectByName('theBall');
     var moveX = 20 * (moveDirection.right - moveDirection.left);
-    if((Math.abs(ball.position.x) >= laneParams.surfaceWidth/2 - ballParams.radius) &&
-       ((ball.position.x > 0 && moveX > 0) || (ball.position.x < 0 && moveX < 0)) ) {
+    var outOfLaneWidth = (Math.abs(ball.position.x) >= laneParams.initX + laneParams.surfaceWidth/2 - ballParams.radius);
+    var goingTooFarRight = (ball.position.x > laneParams.initX && moveX > 0);
+    var goingTooFarLeft = (ball.position.x < laneParams.initX && moveX < 0);
+    if(outOfLaneWidth && (goingTooFarRight || goingTooFarLeft) ) {
         moveX = 0;
     }
 
