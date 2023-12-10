@@ -173,7 +173,7 @@ function AmmoStart() {
     TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
     
     var gui = new dat.GUI();
-    gui.add(ballParams, "x_velocity", -10, 10).step(0.25);
+    gui.add(ballParams, "x_velocity", -12, 12).step(0.25);
 
     render();
 }
