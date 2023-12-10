@@ -97,11 +97,9 @@ function AmmoStart() {
     TW.setKeyboardCallback(" ", rollBall, "Roll the ball!");
     TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
     var gui = new dat.GUI();
+    gui.add(ballParams, "z_velocity", 0, 40 * 12).step(1);
     gui.add(ballParams, "x_velocity", -12, 12).step(0.25);
-    gui.add(ballParams, "z_velocity", 0, 50 * 12).step(0.25);
-    gui.add(ballParams, "x_angular_velocity", -50, 50).step(0.25);
-    gui.add(ballParams, "y_angular_velocity", -50, 50).step(0.25);
-    gui.add(ballParams, "z_angular_velocity", -50, 50).step(0.25);
+    gui.add(ballParams, "z_angular_velocity", -12, 12).step(0.25);
 
     render();
 }
