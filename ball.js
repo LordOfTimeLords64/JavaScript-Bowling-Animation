@@ -16,7 +16,7 @@ var ballParams = {
     x_angular_velocity: 0,
     y_angular_velocity: 0,
     z_angular_velocity:0,
-    friction: 6,
+    friction: 1,
     mass: 15,
 };
 

@@ -37,7 +37,7 @@ var laneParams = {
     initX: 0,
     initY: 0,
     initZ:0,
-    firction: 6,
+    firction: 1,
 };
 
 function createLane(position, mass, rot_quaternion) {
