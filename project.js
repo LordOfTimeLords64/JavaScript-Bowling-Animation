@@ -607,8 +607,11 @@ function moveBall() {
     }
 
     var ball = scene.getObjectByName('theBall');
-    var moveX = moveDirection.right - moveDirection.left;
-    moveX = moveX * 20;
+    var moveX = 20 * (moveDirection.right - moveDirection.left);
+    if((Math.abs(ball.position.x) >= laneParams.surfaceWidth/2 - ballParams.radius) &&
+       ((ball.position.x > 0 && moveX > 0) || (ball.position.x < 0 && moveX < 0)) ) {
+        moveX = 0;
+    }
 
     var resultantImpulse = new Ammo.btVector3(moveX, 0, 0);
 
