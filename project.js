@@ -84,12 +84,15 @@ var pinParameters = {
 var ballParams = {
     radius: ((8.595 + 8.500)/2)/2,
 
-    initX: 12,
+    initX: 0,
     initY: ((8.595 + 8.500)/2)/2 + 1,
     initZ: laneParams.initZ + laneParams.surfaceLength/2 - ((8.595 + 8.500)/2)/2,
 
-    velX: -2,
-    velZ: -20 * 12,
+    x_velocity: 0,
+    z_velocity: -20 * 12,
+
+    friction: 4,
+    rollingFriciton: 10,
 }
 var spotlightParams = {
     initX: 0,
@@ -103,12 +106,12 @@ var spotlightParams = {
     angle: Math.PI/8,
 }
 
-/////////////////////////////////////////////
-// TESTING CODE FOR MOVEMENT GIVEN USER INPUT
-// var ballObject = null;
-// var moveDirection = {left: 0, right: 0};
-// const STATE = {DISABLE_DEACTIVATION: 4};
-/////////////////////////////////////////////
+// Preparing for input to move the ball from its starting position before
+// rolling it
+var moveDirection = {left: 0, right: 0};
+const STATE = {DISABLE_DEACTIVATION: 4};
+var ballWasRolled = false;
+
 
 // Starting the physics engine and calling the start function
 // if all textures are loaded
@@ -128,7 +131,6 @@ var laneTexture = new THREE.TextureLoader().load(
         startAfterTextures();
     }
 );
-
 function startAfterTextures() {
     if(!texturesLoaded.includes(false) && !started) {
         Ammo().then(AmmoStart);
@@ -137,12 +139,11 @@ function startAfterTextures() {
 }
 
 function AmmoStart() {
-
     tmpTransformation = new Ammo.btTransform();
 
     initGraphicsUniverse();
     initPhysiscsUniverse();
-    // setupEventHandlers();
+    setupEventHandlers();
 
     var initialLanePos = new THREE.Vector3(
         laneParams.initX,
@@ -168,17 +169,16 @@ function AmmoStart() {
     spotlight.castShadow = true;
     scene.add(spotlight);
 
-    TW.setKeyboardCallback("f", rollBall, "Roll the ball!");
+    TW.setKeyboardCallback(" ", rollBall, "Roll the ball!");
     TW.setKeyboardCallback("r", resetLane, "Reset the lane!");
-    TW.setKeyboardCallback("j", moveBallLeft, "Move the ball to the left!");
-    TW.setKeyboardCallback("k", moveBallRight, "Move the ball to the right!");
+    
+    var gui = new dat.GUI();
+    gui.add(ballParams, "x_velocity", -10, 10).step(0.25);
 
     render();
-
 }
 
 function initPhysiscsUniverse() {
-
     // Configure the detection of collisions
     var collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
     var dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
@@ -198,7 +198,6 @@ function initPhysiscsUniverse() {
 }
 
 function initGraphicsUniverse() {
-
     clock = new THREE.Clock();
 
     scene = new THREE.Scene();
@@ -224,16 +223,14 @@ function initGraphicsUniverse() {
     // Adding ambient light
     var ambLight = new THREE.AmbientLight(0x333333, 2);
     scene.add(ambLight);
-
 }
 
-// function setupEventHandlers() {
-//     window.addEventListener('keydown', handleKeyDown, false);
-//     window.addEventListener('keyup', handleKeyUp, false);
-// }
+function setupEventHandlers() {
+    window.addEventListener('keydown', handleKeyDown, false);
+    window.addEventListener('keyup', handleKeyUp, false);
+}
 
 function createLane(position, mass, rot_quaternion) {
-
     ///////////////////////////////
     // REGULAR THREE.js GRAPHICS //
     ///////////////////////////////
@@ -298,7 +295,6 @@ function createLane(position, mass, rot_quaternion) {
     lane.userData.physicsBody = RBody;
 
     rigidBody_List.push(lane);
-    
 }
 
 // Returns the lane surface 3D object
@@ -370,7 +366,6 @@ function makeLaneSurface() {
 }
 
 function makePin(position, mass, rot_quaternion, objectName) {
-
     ///////////////////////////////
     // REGULAR THREE.js GRAPHICS //
     ///////////////////////////////
@@ -444,7 +439,6 @@ function makePin(position, mass, rot_quaternion, objectName) {
 
     rigidBody_List.push(pin);
     allTenPins.push(pin);
-
 }
 
 function createTenPins(laneX, laneY, laneZ) {
@@ -461,7 +455,6 @@ function createTenPins(laneX, laneY, laneZ) {
 }
 
 function createBall(radius, position, mass, rot_quaternion) {
-
     let quaternion = undefined;
 
     if (rot_quaternion == null) {
@@ -477,7 +470,6 @@ function createBall(radius, position, mass, rot_quaternion) {
         shininess: 20,
         map: ballTexture
     });
-    // var ball = ballObject = new THREE.Mesh(ballGeom, ballMat);
     var ball = new THREE.Mesh(ballGeom, ballMat);
     ball.castShadow = true;
     ball.position.set(position.x, position.y, position.x);
@@ -511,21 +503,19 @@ function createBall(radius, position, mass, rot_quaternion) {
     );
     let RBody = new Ammo.btRigidBody(RBody_Info);
 
-    ////////////////////
-    // MOVE BALL TESTING
-    // RBody.setActivationState(STATE.DISABLE_DEACTIVATION);
-    ////////////////////
+    RBody.setActivationState(STATE.DISABLE_DEACTIVATION);
+    
+    RBody.setFriction(ballParams.friction);
+    RBody.setRollingFriction(ballParams.rollingFriciton);
 
     physicsUniverse.addRigidBody(RBody);
 
     ball.userData.physicsBody = RBody;
 
     rigidBody_List.push(ball);
-
 }
 
 function updatePhysicsUniverse(deltaTime) {
-
     physicsUniverse.stepSimulation(deltaTime, 10);
 
     for(i = 0; i < rigidBody_List.length; i++) {
@@ -550,36 +540,24 @@ function updatePhysicsUniverse(deltaTime) {
 }
 
 function render() {
-
     let deltaTime = clock.getDelta();
-    // moveBall();
+    moveBall();
     updatePhysicsUniverse(deltaTime);
 
     // renderer.render(scene, camera);
     TW.render();
     requestAnimationFrame(render);
-
 }
 
 function rollBall() {
-    var ball = scene.getObjectByName('theBall');
-    ball.userData.physicsBody.setLinearVelocity(
-        new Ammo.btVector3(ballParams.velX, 0, ballParams.velZ)
-    );
-}
+    if (ballWasRolled) {
+        return;
+    }
 
-function moveBallLeft() {
+    ballWasRolled = true;
     var ball = scene.getObjectByName('theBall');
     ball.userData.physicsBody.setLinearVelocity(
-        new Ammo.btVector3(-5, 0, 0)
-    );
-    console.log(ball.userData.physicsBody.getLinearVelocity().x);
-}
-
-function moveBallRight() {
-    var ball = scene.getObjectByName('theBall');
-    ball.userData.physicsBody.setLinearVelocity(
-        new Ammo.btVector3(5, 0, 0)
+        new Ammo.btVector3(ballParams.x_velocity, 0, ballParams.z_velocity)
     );
 }
 
@@ -587,44 +565,52 @@ function resetLane() {
     location.reload();
 }
 
-// function handleKeyDown(event) {
-//     var keyCode = event.keyCode;
+function handleKeyDown(event) {
+    if (ballWasRolled) {
+        return;
+    }
 
-//     switch(keyCode) {
-//         case 67: // c
-//             moveDirection.left = 1;
-//             break;
+    var keyCode = event.keyCode;
 
-//         case 86: // v
-//             moveDirection.right = 1;
-//             break;
-//     }
-//     // moveBall();
-// }
+    switch(keyCode) {
+        case 65: // a
+            moveDirection.left = 1;
+            break;
 
-// function handleKeyUp(event) {
-//     var keyCode = event.keyCode;
+        case 68: // d
+            moveDirection.right = 1;
+            break;
+    }
+}
 
-//     switch(keyCode) {
-//         case 67: // c
-//             moveDirection.left = 0;
-//             break;
+function handleKeyUp(event) {
+    if (ballWasRolled) {
+        return;
+    }
 
-//         case 86: // v
-//             moveDirection.right = 0;
-//             break;
-//     }
-//     // moveBall();
-// }
+    var keyCode = event.keyCode;
 
-// function moveBall() {
-//     var moveX = moveDirection.right - moveDirection.left;
-//     moveX = moveX * 20;
+    switch(keyCode) {
+        case 65: // a
+            moveDirection.left = 0;
+            break;
 
-//     // var oldVel = ballObject.userData.physicsBody.getLinearVelocity();
-//     // var resultantImpulse = new Ammo.btVector3(moveX, oldVel.y, oldVel.z);
+        case 68: // d
+            moveDirection.right = 0;
+            break;
+    }
+}
 
-//     var resultantImpulse = new Ammo.btVector3(moveX, 0, 0);
+function moveBall() {
+    if (ballWasRolled) {
+        return;
+    }
 
-//     ballObject.userData.physicsBody.setLinearVelocity(resultantImpulse);
-// }
+    var ball = scene.getObjectByName('theBall');
+    var moveX = moveDirection.right - moveDirection.left;
+    moveX = moveX * 20;
+
+    var resultantImpulse = new Ammo.btVector3(moveX, 0, 0);
+
+    ball.userData.physicsBody.setLinearVelocity(resultantImpulse);
+}
