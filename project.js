@@ -50,6 +50,7 @@ var laneParams = {
     initX: 0,
     initY: 0,
     initZ:0,
+    firction: 6,
 };
 var pinParameters = {
     splinePoints: [
@@ -92,8 +93,7 @@ var ballParams = {
     x_angular_velocity: 0,
     y_angular_velocity: 0,
     z_angular_velocity:0,
-    friction: 4,
-    rollingFriciton: 10,
+    friction: 6,
     mass: 15,
 };
 var pinSpotlightParams = {
@@ -173,7 +173,10 @@ function AmmoStart() {
     
     var gui = new dat.GUI();
     gui.add(ballParams, "x_velocity", -12, 12).step(0.25);
-    gui.add(ballParams, "z_velocity", 10 * 12, 30 * 12).step(0.25);
+    gui.add(ballParams, "z_velocity", 10 * 12, 50 * 12).step(0.25);
+    gui.add(ballParams, "x_angular_velocity", -12, 12).step(0.25);
+    gui.add(ballParams, "y_angular_velocity", -12, 12).step(0.25);
+    gui.add(ballParams, "z_angular_velocity", -12, 12).step(0.25);
 
     render();
 }
@@ -322,6 +325,9 @@ function createLane(position, mass, rot_quaternion) {
         localInertia
     );
     let RBody = new Ammo.btRigidBody(RBody_Info);
+
+    RBody.setFriction(laneParams.firction);
+    RBody.setRollingFriction(laneParams.friciton);
 
     physicsUniverse.addRigidBody(RBody);
 
@@ -541,7 +547,7 @@ function createBall(radius, position, mass, rot_quaternion) {
     RBody.setActivationState(STATE.DISABLE_DEACTIVATION);
     
     RBody.setFriction(ballParams.friction);
-    RBody.setRollingFriction(ballParams.rollingFriciton);
+    RBody.setRollingFriction(ballParams.friction);
 
     physicsUniverse.addRigidBody(RBody);
 
